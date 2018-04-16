@@ -228,8 +228,7 @@ var AcquiaHttpHmac = function () {
       throw new Error('The version must be "' + supported_versions.join('" or "') + '". Version "' + version + '" is not supported.');
     }
 
-    var parsed_secret_key = CryptoJS.enc.Base64.parse(secret_key);
-    this.config = { realm: realm, public_key: public_key, parsed_secret_key: parsed_secret_key, version: version, default_content_type: default_content_type };
+    this.config = { realm: realm, public_key: public_key, secret_key: secret_key, version: version, default_content_type: default_content_type };
 
     /**
      * Supported methods. Other HTTP methods through XMLHttpRequest are not supported by modern browsers due to insecurity.
@@ -388,7 +387,7 @@ var AcquiaHttpHmac = function () {
           signature_base_string = method + '\n' + site_name_and_port + '\n' + (parser.pathname || '/') + '\n' + url_query_string + '\n' + parametersToString(authorization_parameters) + '\n' + signature_base_signed_headers_string + x_authorization_timestamp + signature_base_string_content_suffix,
           authorization_string = parametersToString(authorization_parameters, '="', '"', ','),
           authorization_signed_headers_string = encodeURI(Object.keys(signed_headers).join('|||||').toLowerCase().split('|||||').sort().join(';')),
-          signature = encodeURI(CryptoJS.HmacSHA256(signature_base_string, this.config.parsed_secret_key).toString(CryptoJS.enc.Base64)),
+          signature = encodeURI(CryptoJS.HmacSHA256(signature_base_string, this.config.secret_key).toString(CryptoJS.enc.Base64)),
           authorization = 'acquia-http-hmac ' + authorization_string + ',headers="' + authorization_signed_headers_string + '",signature="' + signature + '"';
 
         // Set the authorizations headers.
@@ -420,7 +419,7 @@ var AcquiaHttpHmac = function () {
      */
     value: function hasValidResponse(request) {
       var signature_base_string = request.acquiaHttpHmac.nonce + '\n' + request.acquiaHttpHmac.timestamp + '\n' + request.responseText,
-          signature = CryptoJS.HmacSHA256(signature_base_string, this.config.parsed_secret_key).toString(CryptoJS.enc.Base64),
+          signature = CryptoJS.HmacSHA256(signature_base_string, this.config.secret_key).toString(CryptoJS.enc.Base64),
           server_signature = request.getResponseHeader('X-Server-Authorization-HMAC-SHA256');
 
       void 0;
