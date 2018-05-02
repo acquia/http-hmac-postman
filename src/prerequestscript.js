@@ -18,8 +18,6 @@
  *     {{hmacSecret}} defaults to ''
  *     {{secretIsBase64encoded}} defaults to true
  *
- *   This code replaces Postman variables in url and body text before HMAC encoding
- *
  *   Note: Only HMAC version 2.0 is supported
  *
  *   Notes for using this script to connect to Acquia Commerce Connetore Service
@@ -272,7 +270,13 @@ var AcquiaHttpHmac = function () {
       throw new Error('The version must be "' + supported_versions.join('" or "') + '". Version "' + version + '" is not supported.');
     }
 
-    this.config = { realm: realm, public_key: public_key, secret_key: secret_key, version: version, default_content_type: default_content_type };
+    this.config = {
+        realm: realm,
+        public_key: public_key,
+        parsed_secret_key: CryptoJS.enc.Base64.parse(secret_key),
+        version: version,
+        default_content_type: default_content_type
+    };
 
     /**
      * Supported methods. Other HTTP methods through XMLHttpRequest are not supported by modern browsers due to insecurity.
