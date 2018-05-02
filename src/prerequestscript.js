@@ -9,9 +9,9 @@
  *   X-Authorization-Content-SHA256:{{pm_hmaccontentsha}}
  *
  *   This code sets the Postman environment variables:
- *     {{pm_HmacHeader}}
- *     {{pm_HmacContentSha}}
- *     {{pm_HmacTimestamp}}
+ *     {{acqHmacHeader}}
+ *     {{acqHmacContentSha}}
+ *     {{acqHmacTimestamp}}
  *
  *   This code expects these Postman environement variables to be set:
  *     {{hmacKey}} defaults to ''
