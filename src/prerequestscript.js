@@ -1,6 +1,6 @@
 /*
  * HTTP-HMAC-POSTMAN
- * VERSION: 1.1.4
+ * VERSION: 1.1.5
  *
  * To use this script, paste it into the Postman pre-script editor
  * *AND* add these headers to the request
@@ -10,23 +10,26 @@
  *
  *   This code sets the Postman environment variables:
  *     {{acqHmacHeader}}
- *     {{acqHmacContentSha}}
  *     {{acqHmacTimestamp}}
+ *     {{acqHmacContentSha}}
  *
- *   This code expects these Postman environement variables to be set:
+ *   This code expects these Postman environment variables to be set:
  *     {{hmacKey}} defaults to ''
  *     {{hmacSecret}} defaults to ''
  *     {{secretIsBase64encoded}} defaults to true
  *
+ *   This code replaces Postman variables in url and body text before HMAC encoding
+ *
  *   Note: Only HMAC version 2.0 is supported
  *
- *   Notes for using this script to connect to Acquia Commerce Connetore Service
- *      1. Create Postman environment Variable 'secretIsBase64encoded' set to 'false'
+ *   Notes for using this script to connect to Acquia Commerce Connector Service
+ *      1. Create Postman environment Variable 'secretIsBase64encoded' set it to 'false'
  *      2. Do not base64 encode the HMAC secret
  *
  *   Notes for using this script to connect to Acquia Lift
  *      1. Use a base64 encoded secret
- *      2. Set Postman environment variable acquiaLiftAccountId set to your account ID
+ *      2. If you have created Postman environment Variable 'secretIsBase64encoded'set it to 'true'
+ *         but if you have not created that variable it can be omitted (because the default here is true)
  *
  */
 
@@ -34,198 +37,30 @@ var publicKey = postman.getEnvironmentVariable('env_pubkey') || '';
 var secretKey = postman.getEnvironmentVariable('env_secretkey') || '';
 var hmacRealm = postman.getEnvironmentVariable('env_realm') || '';
 
-// Decide what to do with the secret
+// Decide what to do with the secret.
 var hasAlreadyEncodedSecret = postman.getEnvironmentVariable('secretIsBase64encoded') || true;
-
-
-//############################################################################
-//############################################################################
-//####################### DO NOT EDIT BELOW THIS POINT #######################
-//############################################################################
-//############################################################################
-
 if (hasAlreadyEncodedSecret && hasAlreadyEncodedSecret !== "false")
 {
-    // do nothing here
+    // Do nothing here.
 }
 else
 {
-    // encode the secret
-    // strictly, pre-encoding is incorrect but that is a discussion for another day
+    // Encode the secret.
+    // Base64 encoding the secret can be unnecessary but that is a discussion for another day.
     wordArray = CryptoJS.enc.Utf8.parse(secretKey);
     secretKey = CryptoJS.enc.Base64.stringify(wordArray);
 }
 
-//Acquia HMAC LIB https://github.com/acquia/http-hmac-javascript
+
+//Acquia HMAC LIB https://github.com/acquia/http-hmac-javascript (modified)
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-if (!Date.now) {
-  Date.now = function () {
-    return new Date().getTime();
-  };
-}
-if (!Object.keys) {
-  Object.keys = function () {
-    'use strict';
-
-    var hasOwnProperty = Object.prototype.hasOwnProperty,
-        hasDontEnumBug = !{ toString: null }.propertyIsEnumerable('toString'),
-        dontEnums = ['toString', 'toLocaleString', 'valueOf', 'hasOwnProperty', 'isPrototypeOf', 'propertyIsEnumerable', 'constructor'],
-        dontEnumsLength = dontEnums.length;
-
-    return function (obj) {
-      if ((typeof obj === 'undefined' ? 'undefined' : _typeof(obj)) !== 'object' && (typeof obj !== 'function' || obj === null)) {
-        throw new TypeError('Object.keys called on non-object');
-      }
-
-      var result = [],
-          prop,
-          i;
-
-      for (prop in obj) {
-        if (hasOwnProperty.call(obj, prop)) {
-          result.push(prop);
-        }
-      }
-
-      if (hasDontEnumBug) {
-        for (i = 0; i < dontEnumsLength; i++) {
-          if (hasOwnProperty.call(obj, dontEnums[i])) {
-            result.push(dontEnums[i]);
-          }
-        }
-      }
-      return result;
-    };
-  }();
-}
-if (!Array.prototype.forEach) {
-  Array.prototype.forEach = function (callback, thisArg) {
-    var T, k;
-
-    if (this === null) {
-      throw new TypeError(' this is null or not defined');
-    }
-
-    // 1. Let O be the result of calling toObject() passing the
-    // |this| value as the argument.
-    var O = Object(this);
-
-    // 2. Let lenValue be the result of calling the Get() internal
-    // method of O with the argument "length".
-    // 3. Let len be toUint32(lenValue).
-    var len = O.length >>> 0;
-
-    // 4. If isCallable(callback) is false, throw a TypeError exception.
-    // See: http://es5.github.com/#x9.11
-    if (typeof callback !== "function") {
-      throw new TypeError(callback + ' is not a function');
-    }
-
-    // 5. If thisArg was supplied, let T be thisArg; else let
-    // T be undefined.
-    if (arguments.length > 1) {
-      T = thisArg;
-    }
-
-    // 6. Let k be 0
-    k = 0;
-
-    // 7. Repeat, while k < len
-    while (k < len) {
-      var kValue;
-
-      // a. Let Pk be ToString(k).
-      //    This is implicit for LHS operands of the in operator
-      // b. Let kPresent be the result of calling the HasProperty
-      //    internal method of O with argument Pk.
-      //    This step can be combined with c
-      // c. If kPresent is true, then
-      if (k in O) {
-        // i. Let kValue be the result of calling the Get internal
-        // method of O with argument Pk.
-        kValue = O[k];
-
-        // ii. Call the Call internal method of callback with T as
-        // the this value and argument list containing kValue, k, and O.
-        callback.call(T, kValue, k, O);
-      }
-      // d. Increase k by 1.
-      k++;
-    }
-    // 8. return undefined
-  };
-}
-if (!Array.prototype.indexOf) {
-  Array.prototype.indexOf = function (searchElement, fromIndex) {
-
-    var k;
-
-    // 1. Let o be the result of calling ToObject passing
-    //    the this value as the argument.
-    if (this === null) {
-      throw new TypeError('"this" is null or not defined');
-    }
-
-    var o = Object(this);
-
-    // 2. Let lenValue be the result of calling the Get
-    //    internal method of o with the argument "length".
-    // 3. Let len be ToUint32(lenValue).
-    var len = o.length >>> 0;
-
-    // 4. If len is 0, return -1.
-    if (len === 0) {
-      return -1;
-    }
-
-    // 5. If argument fromIndex was passed let n be
-    //    ToInteger(fromIndex); else let n be 0.
-    var n = +fromIndex || 0;
-
-    if (Math.abs(n) === Infinity) {
-      n = 0;
-    }
-
-    // 6. If n >= len, return -1.
-    if (n >= len) {
-      return -1;
-    }
-
-    // 7. If n >= 0, then Let k be n.
-    // 8. Else, n<0, Let k be len - abs(n).
-    //    If k is less than 0, then let k be 0.
-    k = Math.max(n >= 0 ? n : len - Math.abs(n), 0);
-
-    // 9. Repeat, while k < len
-    while (k < len) {
-      // a. Let Pk be ToString(k).
-      //   This is implicit for LHS operands of the in operator
-      // b. Let kPresent be the result of calling the
-      //    HasProperty internal method of o with argument Pk.
-      //   This step can be combined with c
-      // c. If kPresent is true, then
-      //    i.  Let elementK be the result of calling the Get
-      //        internal method of o with the argument ToString(k).
-      //   ii.  Let same be the result of applying the
-      //        Strict Equality Comparison Algorithm to
-      //        searchElement and elementK.
-      //  iii.  If same is true, return k.
-      if (k in o && o[k] === searchElement) {
-        return k;
-      }
-      k++;
-    }
-    return -1;
-  };
-}
-
 /**
- * AcquiaHttpHmac - Let's you sign a XMLHttpRequest or promised-based request object (e.g. jqXHR) by Acquia's
+ * AcquiaHttpHmac - Let's you sign a request object (e.g. jqXHR) by Acquia's
  * HTTP HMAC Spec. For more information, see: https://github.com/acquia/http-hmac-spec/tree/2.0
  */
 
@@ -240,19 +75,13 @@ var AcquiaHttpHmac = function () {
    *   Public key.
    * @param {string} secret_key
    *   Secret key.
-   * @param {string} version
-   *   Authenticator version.
-   * @param {string} default_content_type
-   *   Default content type of all signings (other than specified during signing).
    */
   function AcquiaHttpHmac(_ref) {
     var realm = _ref.realm,
         public_key = _ref.public_key,
         secret_key = _ref.secret_key,
-        _ref$version = _ref.version,
-        version = _ref$version === undefined ? '2.0' : _ref$version,
-        _ref$default_content_ = _ref.default_content_type,
-        default_content_type = _ref$default_content_ === undefined ? 'application/json' : _ref$default_content_;
+        version = '2.0',
+        default_content_type = 'application/json';
 
     _classCallCheck(this, AcquiaHttpHmac);
 
@@ -264,10 +93,6 @@ var AcquiaHttpHmac = function () {
     }
     if (!secret_key) {
       throw new Error('The "secret_key" must not be empty.');
-    }
-    var supported_versions = ['2.0'];
-    if (supported_versions.indexOf(version) < 0) {
-      throw new Error('The version must be "' + supported_versions.join('" or "') + '". Version "' + version + '" is not supported.');
     }
 
     this.config = {
@@ -286,19 +111,8 @@ var AcquiaHttpHmac = function () {
     this.SUPPORTED_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CUSTOM'];
   }
 
-  /**
-   * Check if the request is a XMLHttpRequest.
-   *
-   * @param {(XMLHttpRequest|Object)} request
-   *   The request to be signed, which can be a XMLHttpRequest or a promise-based request Object (e.g. jqXHR).
-   * @returns {boolean}
-   *   TRUE if the request is a XMLHttpRequest; FALSE otherwise.
-   */
-
-
   _createClass(AcquiaHttpHmac, [{
     key: 'sign',
-
 
     /**
      * Sign the request using provided parameters.
@@ -328,10 +142,6 @@ var AcquiaHttpHmac = function () {
           _ref2$body = _ref2.body,
           body = _ref2$body === undefined ? '' : _ref2$body;
 
-      // Validate input. First 3 parameters are mandatory.
-      //if (!request || !AcquiaHttpHmac.isXMLHttpRequest(request) && !AcquiaHttpHmac.isPromiseRequest(request)) {
-    //    throw new Error('The request is required, and must be a XMLHttpRequest or promise-based request Object (e.g. jqXHR).');
-      //}
       if (this.SUPPORTED_METHODS.indexOf(method) < 0) {
         throw new Error('The method must be "' + this.SUPPORTED_METHODS.join('" or "') + '". "' + method + '" is not supported.');
       }
@@ -428,7 +238,7 @@ var AcquiaHttpHmac = function () {
           },
           x_authorization_timestamp = Math.floor(Date.now() / 1000).toString(),
           x_authorization_content_sha256 = willSendBody(body, method) ? CryptoJS.SHA256(body).toString(CryptoJS.enc.Base64) : '',
-          signature_base_string_content_suffix = willSendBody(body, method) ? '\n' + 'application/json' + '\n' + x_authorization_content_sha256 : '',
+          signature_base_string_content_suffix = willSendBody(body, method) ? '\n' + content_type + '\n' + x_authorization_content_sha256 : '',
           site_port = parser.port ? ':' + parser.port : '',
           site_name_and_port = '' + parser.hostname + site_port,
           url_query_string = parser.search,
@@ -440,68 +250,13 @@ var AcquiaHttpHmac = function () {
           signature = encodeURI(CryptoJS.HmacSHA256(signature_base_string, this.config.parsed_secret_key).toString(CryptoJS.enc.Base64)),
           authorization = 'acquia-http-hmac ' + authorization_string + ',headers="' + authorization_signed_headers_string + '",signature="' + signature + '"';
 
-        // Set the authorizations headers.
-        request.acquiaHttpHmac = {};
-        request.acquiaHttpHmac.timestamp = x_authorization_timestamp;
-        request.acquiaHttpHmac.nonce = nonce;
-
         postman.setEnvironmentVariable('acqHmacTimestamp',x_authorization_timestamp);
         postman.setEnvironmentVariable('acqHmacHeader', authorization);
         postman.setEnvironmentVariable('acqHmacContentSha',x_authorization_content_sha256);
 
-        void 0;
-        void 0;
-        void 0;
-        void 0;
-        void 0;
     }
-  }, {
-    key: 'hasValidResponse',
-
-
-    /**
-     * Check if the request has a valid response.
-     *
-     * @param {XMLHttpRequest|Object} request
-     *   The request to be validated.
-     * @returns {boolean}
-     *   TRUE if the request is valid; FALSE otherwise.
-     */
-    value: function hasValidResponse(request) {
-      var signature_base_string = request.acquiaHttpHmac.nonce + '\n' + request.acquiaHttpHmac.timestamp + '\n' + request.responseText,
-          signature = CryptoJS.HmacSHA256(signature_base_string, this.config.secret_key).toString(CryptoJS.enc.Base64),
-          server_signature = request.getResponseHeader('X-Server-Authorization-HMAC-SHA256');
-
-      void 0;
-      void 0;
-      void 0;
-
-      return signature === server_signature;
-    }
-  }], [{
-    key: 'isXMLHttpRequest',
-    value: function isXMLHttpRequest(request) {
-      if (request instanceof XMLHttpRequest || request.onreadystatechange) {
-        return true;
-      }
-      return false;
-    }
-
-    /**
-     * Check if the request is a promise-based request Object (e.g. jqXHR).
-     *
-     * @param {(XMLHttpRequest|Object)} request
-     *   The request to be signed, which can be a XMLHttpRequest or a promise-based request Object (e.g. jqXHR).
-     * @returns {boolean}
-     *   TRUE if the request is a promise-based request Object (e.g. jqXHR); FALSE otherwise.
-     */
-
-  }, {
-    key: 'isPromiseRequest',
-    value: function isPromiseRequest(request) {
-      return request.hasOwnProperty('setRequestHeader') && request.hasOwnProperty('getResponseHeader') && request.hasOwnProperty('promise');
-    }
-
+  }],
+  [{
     /**
      * Implementation of Steven Levithan uri parser.
      *
@@ -510,7 +265,6 @@ var AcquiaHttpHmac = function () {
      * @return {Object}   parsed representation of a uri
      */
 
-  }, {
     key: 'parseUri',
     value: function parseUri(str) {
       var strictMode = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
@@ -543,19 +297,66 @@ var AcquiaHttpHmac = function () {
 
   return AcquiaHttpHmac;
 }();
+//END Acquia HMAC LIB https://github.com/acquia/http-hmac-javascript (modified)
 
-var method = request.method.toUpperCase(),
-    path = request.url,
-    signed_headers = {},
-    content_type = "application/json",
-    body = request.data;
-    
+/**
+ * Utility function to switch out any Postman environment variables in the URL or body
+ * of the request. Necessary because Postman has not substituted them yet.
+ *
+ * @param String   anString The string to parse and replace any {{envVars}} with values
+ * @return string  The string with all {{envVars}} replaced
+ */
+function switchOutEnvironmentVariables(anString)
+{
+    var placeHolder = "";
+    var place = "";
+    var switchedOut = "";
+    switchedOut = anString;
+
+    // Politely refuse to switch out anything that is not a string.
+    if(typeof anString != "string")
+    {
+        // Bail without substituting.
+        return anString;
+    }
+
+    // Seek anything between braces but don't be greedy.
+    var seekVariables = anString.match(/{{.+?}}/g);
+    if(seekVariables)
+    {
+        for (var i=0;i<seekVariables.length;i++)
+        {
+            placeHolder = seekVariables[i].substr(2,seekVariables[i].length-4);
+            place = postman.getEnvironmentVariable(placeHolder);
+            switchedOut = switchedOut.replace("{{"+placeHolder+"}}",place);
+        }
+    }
+
+    return switchedOut;
+}
+
+var method = request.method.toUpperCase();
+var path = switchOutEnvironmentVariables(request.url);
+var signed_headers = {};
+var body = request.data;
+var content_type = request.headers['content-type'];
+
+if (body && typeof body === "string")
+{
+    body = switchOutEnvironmentVariables(body);
+}
+else
+{
+    body = undefined;
+}
+
 var sign_parameters = {request, method, path, signed_headers, content_type, body};
 
 var hmac_config = {
-  realm: hmacRealm,
-  public_key: publicKey,
-  secret_key: secretKey
-};
+        realm: hmacRealm,
+        public_key: publicKey,
+        secret_key: secretKey
+    };
+
 const HMAC = new AcquiaHttpHmac(hmac_config);
 HMAC.sign(sign_parameters);
