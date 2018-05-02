@@ -4,9 +4,9 @@
  *
  * To use this script, paste it into the Postman pre-script editor
  * *AND* add these headers to the request
- *   Authorization:{{pm_hmacheader}}
- *   X-Authorization-Timestamp:{{pm_hmactimestamp}}
- *   X-Authorization-Content-SHA256:{{pm_hmaccontentsha}}
+ *   Authorization:{{acqHmacHeader}}
+ *   X-Authorization-Timestamp:{{acqHmacTimestamp}}
+ *   X-Authorization-Content-SHA256:{{acqHmacContentSha}}
  *
  *   This code sets the Postman environment variables:
  *     {{acqHmacHeader}}
