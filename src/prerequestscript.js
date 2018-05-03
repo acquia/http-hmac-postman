@@ -14,8 +14,9 @@
  *     {{acqHmacContentSha}}
  *
  *   This code expects these Postman environment variables to be set:
- *     {{hmacKey}} defaults to ''
- *     {{hmacSecret}} defaults to ''
+ *     {{env_pubkey}} defaults to ''
+ *     {{env_secretkey}} defaults to ''
+ *     {{env_realm}} defaults to ''
  *     {{secretIsBase64encoded}} defaults to true
  *
  *   This code replaces Postman variables in url and body text before HMAC encoding
