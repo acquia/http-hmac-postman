@@ -9,9 +9,9 @@
  *   X-Authorization-Content-SHA256:{{acqHmacContentSha}}
  *
  *   This code sets the Postman environment variables:
- *     {{acqHmacHeader}}
- *     {{acqHmacTimestamp}}
- *     {{acqHmacContentSha}}
+ *     {{Authorization}}
+ *     {{X-Authorization-Timestamp}}
+ *     {{X-Authorization-Content-SHA256}}
  *
  *   This code expects these Postman environment variables to be set:
  *     {{env_pubkey}} defaults to ''
@@ -251,9 +251,9 @@ var AcquiaHttpHmac = function () {
           signature = encodeURI(CryptoJS.HmacSHA256(signature_base_string, this.config.parsed_secret_key).toString(CryptoJS.enc.Base64)),
           authorization = 'acquia-http-hmac ' + authorization_string + ',headers="' + authorization_signed_headers_string + '",signature="' + signature + '"';
 
-        postman.setEnvironmentVariable('acqHmacTimestamp',x_authorization_timestamp);
-        postman.setEnvironmentVariable('acqHmacHeader', authorization);
-        postman.setEnvironmentVariable('acqHmacContentSha',x_authorization_content_sha256);
+        postman.setEnvironmentVariable('X-Authorization-Timestamp',x_authorization_timestamp);
+        postman.setEnvironmentVariable('Authorization', authorization);
+        postman.setEnvironmentVariable('X-Authorization-Content-SHA256',x_authorization_content_sha256);
 
     }
   }],
