@@ -4,9 +4,9 @@
  *
  * To use this script, paste it into the Postman pre-script editor
  * *AND* add these headers to the request
- *   Authorization:{{acqHmacHeader}}
- *   X-Authorization-Timestamp:{{acqHmacTimestamp}}
- *   X-Authorization-Content-SHA256:{{acqHmacContentSha}}
+ *   Authorization:{{Authorization}}
+ *   X-Authorization-Timestamp:{{X-Authorization-Timestamp}}
+ *   X-Authorization-Content-SHA256:{{X-Authorization-Content-SHA256}}
  *
  *   This code sets the Postman environment variables:
  *     {{Authorization}}
@@ -66,237 +66,237 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
  */
 
 var AcquiaHttpHmac = function () {
-  /**
-   * Constructor.
-   *
-   * @constructor
-   * @param {string} realm
-   *   The provider.
-   * @param {string} public_key
-   *   Public key.
-   * @param {string} secret_key
-   *   Secret key.
-   */
-  function AcquiaHttpHmac(_ref) {
-    var realm = _ref.realm,
-        public_key = _ref.public_key,
-        secret_key = _ref.secret_key,
-        version = '2.0',
-        default_content_type = 'application/json';
-
-    _classCallCheck(this, AcquiaHttpHmac);
-
-    if (!realm) {
-      throw new Error('The "realm" must not be empty.');
-    }
-    if (!public_key) {
-      throw new Error('The "public_key" must not be empty.');
-    }
-    if (!secret_key) {
-      throw new Error('The "secret_key" must not be empty.');
-    }
-
-    this.config = {
-        realm: realm,
-        public_key: public_key,
-        parsed_secret_key: CryptoJS.enc.Base64.parse(secret_key),
-        version: version,
-        default_content_type: default_content_type
-    };
-
     /**
-     * Supported methods. Other HTTP methods through XMLHttpRequest are not supported by modern browsers due to insecurity.
+     * Constructor.
      *
-     * @type array
+     * @constructor
+     * @param {string} realm
+     *   The provider.
+     * @param {string} public_key
+     *   Public key.
+     * @param {string} secret_key
+     *   Secret key.
      */
-    this.SUPPORTED_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CUSTOM'];
-  }
+    function AcquiaHttpHmac(_ref) {
+        var realm = _ref.realm,
+            public_key = _ref.public_key,
+            secret_key = _ref.secret_key,
+            version = '2.0',
+            default_content_type = 'application/json';
 
-  _createClass(AcquiaHttpHmac, [{
-    key: 'sign',
+        _classCallCheck(this, AcquiaHttpHmac);
 
-    /**
-     * Sign the request using provided parameters.
-     *
-     * @param {(XMLHttpRequest|Object)} request
-     *   The request to be signed, which can be a XMLHttpRequest or a promise-based request Object (e.g. jqXHR).
-     * @param {string} method
-     *   Must be defined in the supported_methods.
-     * @param {string} path
-     *   End point's full URL path, including schema, port, query string, etc. It must already be URL encoded.
-     * @param {object} signed_headers
-     *   Signed headers.
-     * @param {string} content_type
-     *   Content type.
-     * @param {string} body
-     *   Body.
-     * @returns {string}
-     */
-    value: function sign(_ref2) {
-      var request = _ref2.request,
-          method = _ref2.method,
-          path = _ref2.path,
-          _ref2$signed_headers = _ref2.signed_headers,
-          signed_headers = _ref2$signed_headers === undefined ? {} : _ref2$signed_headers,
-          _ref2$content_type = _ref2.content_type,
-          content_type = _ref2$content_type === undefined ? this.config.default_content_type : _ref2$content_type,
-          _ref2$body = _ref2.body,
-          body = _ref2$body === undefined ? '' : _ref2$body;
-
-      if (this.SUPPORTED_METHODS.indexOf(method) < 0) {
-        throw new Error('The method must be "' + this.SUPPORTED_METHODS.join('" or "') + '". "' + method + '" is not supported.');
-      }
-      if (!path) {
-        throw new Error('The end point path must not be empty.');
-      }
-
-      /**
-       * Convert an object of parameters to a string.
-       *
-       * @param {object} parameters
-       *   Header parameters in key: value pair.
-       * @param value_prefix
-       *   The parameter value's prefix decoration.
-       * @param value_suffix
-       *   The parameter value's suffix decoration.
-       * @param glue
-       *   When join(), use this string as the glue.
-       * @param encode
-       *   When true, encode the parameter's value; otherwise don't encode.
-       * @returns {string}
-       */
-      var parametersToString = function parametersToString(parameters) {
-        var value_prefix = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : '=';
-        var value_suffix = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : '';
-        var glue = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : '&';
-        var encode = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : true;
-
-        var parameter_keys = Object.keys(parameters),
-            processed_parameter_keys = [],
-            processed_parameters = {},
-            result_string_array = [];
-
-        // Process the headers.
-        // 1) Process the parameter keys into lowercase, and
-        // 2) Process values to URI encoded if applicable.
-        parameter_keys.forEach(function (parameter_key) {
-          if (!parameters.hasOwnProperty(parameter_key)) {
-            return;
-          }
-          var processed_parameter_key = parameter_key.toLowerCase();
-          processed_parameter_keys.push(processed_parameter_key);
-          processed_parameters[processed_parameter_key] = encode ? encodeURIComponent(parameters[parameter_key]) : parameters[parameter_key];
-        });
-
-        // Process into result string.
-        processed_parameter_keys.sort().forEach(function (processed_parameter_key) {
-          if (!processed_parameters.hasOwnProperty(processed_parameter_key)) {
-            return;
-          }
-          result_string_array.push('' + processed_parameter_key + value_prefix + processed_parameters[processed_parameter_key] + value_suffix);
-        });
-        return result_string_array.join(glue);
-      };
-
-      /**
-       * Generate a UUID nonce.
-       *
-       * @returns {string}
-       */
-      var generateNonce = function generateNonce() {
-        var d = Date.now();
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-          var r = (d + Math.random() * 16) % 16 | 0;
-          d = Math.floor(d / 16);
-          return (c == 'x' ? r : r & 0x7 | 0x8).toString(16);
-        });
-      };
-
-      /**
-       * Determine if this request sends body content (or skips silently).
-       *
-       * Note: modern browsers always skip body at send(), when the request method is "GET" or "HEAD".
-       *
-       * @param body
-       *   Body content.
-       * @param method
-       *   The request's method.
-       * @returns {boolean}
-       */
-      var willSendBody = function willSendBody(body, method) {
-        var bodyless_request_types = ['GET', 'HEAD'];
-        return body.length !== 0 && bodyless_request_types.indexOf(method) < 0;
-      };
-
-      // Compute the authorization headers.
-      var nonce = generateNonce(),
-          parser = AcquiaHttpHmac.parseUri(path),
-          authorization_parameters = {
-              id: this.config.public_key,
-              nonce: request.id,
-              realm: this.config.realm,
-              version: this.config.version
-          },
-          x_authorization_timestamp = Math.floor(Date.now() / 1000).toString(),
-          x_authorization_content_sha256 = willSendBody(body, method) ? CryptoJS.SHA256(body).toString(CryptoJS.enc.Base64) : '',
-          signature_base_string_content_suffix = willSendBody(body, method) ? '\n' + content_type + '\n' + x_authorization_content_sha256 : '',
-          site_port = parser.port ? ':' + parser.port : '',
-          site_name_and_port = '' + parser.hostname + site_port,
-          url_query_string = parser.search,
-          signed_headers_string = parametersToString(signed_headers, ':', '', '\n', false),
-          signature_base_signed_headers_string = signed_headers_string === '' ? '' : signed_headers_string + '\n',
-          signature_base_string = method + '\n' + site_name_and_port + '\n' + (parser.pathname || '/') + '\n' + url_query_string + '\n' + parametersToString(authorization_parameters) + '\n' + signature_base_signed_headers_string + x_authorization_timestamp + signature_base_string_content_suffix,
-          authorization_string = parametersToString(authorization_parameters, '="', '"', ','),
-          authorization_signed_headers_string = encodeURI(Object.keys(signed_headers).join('|||||').toLowerCase().split('|||||').sort().join(';')),
-          signature = encodeURI(CryptoJS.HmacSHA256(signature_base_string, this.config.parsed_secret_key).toString(CryptoJS.enc.Base64)),
-          authorization = 'acquia-http-hmac ' + authorization_string + ',headers="' + authorization_signed_headers_string + '",signature="' + signature + '"';
-
-        postman.setEnvironmentVariable('X-Authorization-Timestamp',x_authorization_timestamp);
-        postman.setEnvironmentVariable('Authorization', authorization);
-        postman.setEnvironmentVariable('X-Authorization-Content-SHA256',x_authorization_content_sha256);
-
-    }
-  }],
-  [{
-    /**
-     * Implementation of Steven Levithan uri parser.
-     *
-     * @param  {String}   str The uri to parse
-     * @param  {Boolean}  strictMode strict mode flag
-     * @return {Object}   parsed representation of a uri
-     */
-
-    key: 'parseUri',
-    value: function parseUri(str) {
-      var strictMode = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
-
-      var o = {
-        key: ["source", "protocol", "host", "userInfo", "user", "password", "hostname", "port", "relative", "pathname", "directory", "file", "search", "hash"],
-        q: {
-          name: "queryKey",
-          parser: /(?:^|&)([^&=]*)=?([^&]*)/g
-        },
-        parser: {
-          strict: /^(?:([^:\/?#]+):)?(?:\/\/((?:(([^:@]*)(?::([^:@]*))?)?@)?([^:\/?#]*)(?::(\d*))?))?((((?:[^?#\/]*\/)*)([^?#]*))(?:\?([^#]*))?(?:#(.*))?)/,
-          loose: /^(?:(?![^:@]+:[^:@\/]*@)([^:\/?#.]+):)?(?:\/\/)?((?:(([^:@]*)(?::([^:@]*))?)?@)?([^:\/?#]*)(?::(\d*))?)(((\/(?:[^?#](?![^?#\/]*\.[^?#\/.]+(?:[?#]|$)))*\/?)?([^?#\/]*))(?:\?([^#]*))?(?:#(.*))?)/
+        if (!realm) {
+            throw new Error('The "realm" must not be empty.');
         }
-      },
-          m = o.parser[strictMode ? "strict" : "loose"].exec(str),
-          uri = {},
-          i = 14;
+        if (!public_key) {
+            throw new Error('The "public_key" must not be empty.');
+        }
+        if (!secret_key) {
+            throw new Error('The "secret_key" must not be empty.');
+        }
 
-      while (i--) {
-        uri[o.key[i]] = m[i] || "";
-      }uri[o.q.name] = {};
-      uri[o.key[12]].replace(o.q.parser, function ($0, $1, $2) {
-        if ($1) uri[o.q.name][$1] = $2;
-      });
+        this.config = {
+            realm: realm,
+            public_key: public_key,
+            parsed_secret_key: CryptoJS.enc.Base64.parse(secret_key),
+            version: version,
+            default_content_type: default_content_type
+        };
 
-      return uri;
+        /**
+         * Supported methods. Other HTTP methods through XMLHttpRequest are not supported by modern browsers due to insecurity.
+         *
+         * @type array
+         */
+        this.SUPPORTED_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CUSTOM'];
     }
-  }]);
 
-  return AcquiaHttpHmac;
+    _createClass(AcquiaHttpHmac, [{
+            key: 'sign',
+
+            /**
+             * Sign the request using provided parameters.
+             *
+             * @param {(XMLHttpRequest|Object)} request
+             *   The request to be signed, which can be a XMLHttpRequest or a promise-based request Object (e.g. jqXHR).
+             * @param {string} method
+             *   Must be defined in the supported_methods.
+             * @param {string} path
+             *   End point's full URL path, including schema, port, query string, etc. It must already be URL encoded.
+             * @param {object} signed_headers
+             *   Signed headers.
+             * @param {string} content_type
+             *   Content type.
+             * @param {string} body
+             *   Body.
+             * @returns {string}
+             */
+            value: function sign(_ref2) {
+                var request = _ref2.request,
+                    method = _ref2.method,
+                    path = _ref2.path,
+                    _ref2$signed_headers = _ref2.signed_headers,
+                    signed_headers = _ref2$signed_headers === undefined ? {} : _ref2$signed_headers,
+                    _ref2$content_type = _ref2.content_type,
+                    content_type = _ref2$content_type === undefined ? this.config.default_content_type : _ref2$content_type,
+                    _ref2$body = _ref2.body,
+                    body = _ref2$body === undefined ? '' : _ref2$body;
+
+                if (this.SUPPORTED_METHODS.indexOf(method) < 0) {
+                    throw new Error('The method must be "' + this.SUPPORTED_METHODS.join('" or "') + '". "' + method + '" is not supported.');
+                }
+                if (!path) {
+                    throw new Error('The end point path must not be empty.');
+                }
+
+                /**
+                 * Convert an object of parameters to a string.
+                 *
+                 * @param {object} parameters
+                 *   Header parameters in key: value pair.
+                 * @param value_prefix
+                 *   The parameter value's prefix decoration.
+                 * @param value_suffix
+                 *   The parameter value's suffix decoration.
+                 * @param glue
+                 *   When join(), use this string as the glue.
+                 * @param encode
+                 *   When true, encode the parameter's value; otherwise don't encode.
+                 * @returns {string}
+                 */
+                var parametersToString = function parametersToString(parameters) {
+                    var value_prefix = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : '=';
+                    var value_suffix = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : '';
+                    var glue = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : '&';
+                    var encode = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : true;
+
+                    var parameter_keys = Object.keys(parameters),
+                        processed_parameter_keys = [],
+                        processed_parameters = {},
+                        result_string_array = [];
+
+                    // Process the headers.
+                    // 1) Process the parameter keys into lowercase, and
+                    // 2) Process values to URI encoded if applicable.
+                    parameter_keys.forEach(function (parameter_key) {
+                        if (!parameters.hasOwnProperty(parameter_key)) {
+                            return;
+                        }
+                        var processed_parameter_key = parameter_key.toLowerCase();
+                        processed_parameter_keys.push(processed_parameter_key);
+                        processed_parameters[processed_parameter_key] = encode ? encodeURIComponent(parameters[parameter_key]) : parameters[parameter_key];
+                    });
+
+                    // Process into result string.
+                    processed_parameter_keys.sort().forEach(function (processed_parameter_key) {
+                        if (!processed_parameters.hasOwnProperty(processed_parameter_key)) {
+                            return;
+                        }
+                        result_string_array.push('' + processed_parameter_key + value_prefix + processed_parameters[processed_parameter_key] + value_suffix);
+                    });
+                    return result_string_array.join(glue);
+                };
+
+                /**
+                 * Generate a UUID nonce.
+                 *
+                 * @returns {string}
+                 */
+                var generateNonce = function generateNonce() {
+                    var d = Date.now();
+                    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                        var r = (d + Math.random() * 16) % 16 | 0;
+                        d = Math.floor(d / 16);
+                        return (c == 'x' ? r : r & 0x7 | 0x8).toString(16);
+                    });
+                };
+
+                /**
+                 * Determine if this request sends body content (or skips silently).
+                 *
+                 * Note: modern browsers always skip body at send(), when the request method is "GET" or "HEAD".
+                 *
+                 * @param body
+                 *   Body content.
+                 * @param method
+                 *   The request's method.
+                 * @returns {boolean}
+                 */
+                var willSendBody = function willSendBody(body, method) {
+                    var bodyless_request_types = ['GET', 'HEAD'];
+                    return body.length !== 0 && bodyless_request_types.indexOf(method) < 0;
+                };
+
+                // Compute the authorization headers.
+                var nonce = generateNonce(),
+                    parser = AcquiaHttpHmac.parseUri(path),
+                    authorization_parameters = {
+                        id: this.config.public_key,
+                        nonce: request.id,
+                        realm: this.config.realm,
+                        version: this.config.version
+                    },
+                    x_authorization_timestamp = Math.floor(Date.now() / 1000).toString(),
+                    x_authorization_content_sha256 = willSendBody(body, method) ? CryptoJS.SHA256(body).toString(CryptoJS.enc.Base64) : '',
+                    signature_base_string_content_suffix = willSendBody(body, method) ? '\n' + content_type + '\n' + x_authorization_content_sha256 : '',
+                    site_port = parser.port ? ':' + parser.port : '',
+                    site_name_and_port = '' + parser.hostname + site_port,
+                    url_query_string = parser.search,
+                    signed_headers_string = parametersToString(signed_headers, ':', '', '\n', false),
+                    signature_base_signed_headers_string = signed_headers_string === '' ? '' : signed_headers_string + '\n',
+                    signature_base_string = method + '\n' + site_name_and_port + '\n' + (parser.pathname || '/') + '\n' + url_query_string + '\n' + parametersToString(authorization_parameters) + '\n' + signature_base_signed_headers_string + x_authorization_timestamp + signature_base_string_content_suffix,
+                    authorization_string = parametersToString(authorization_parameters, '="', '"', ','),
+                    authorization_signed_headers_string = encodeURI(Object.keys(signed_headers).join('|||||').toLowerCase().split('|||||').sort().join(';')),
+                    signature = encodeURI(CryptoJS.HmacSHA256(signature_base_string, this.config.parsed_secret_key).toString(CryptoJS.enc.Base64)),
+                    authorization = 'acquia-http-hmac ' + authorization_string + ',headers="' + authorization_signed_headers_string + '",signature="' + signature + '"';
+
+                postman.setEnvironmentVariable('X-Authorization-Timestamp',x_authorization_timestamp);
+                postman.setEnvironmentVariable('Authorization', authorization);
+                postman.setEnvironmentVariable('X-Authorization-Content-SHA256',x_authorization_content_sha256);
+
+            }
+        }],
+        [{
+            /**
+             * Implementation of Steven Levithan uri parser.
+             *
+             * @param  {String}   str The uri to parse
+             * @param  {Boolean}  strictMode strict mode flag
+             * @return {Object}   parsed representation of a uri
+             */
+
+            key: 'parseUri',
+            value: function parseUri(str) {
+                var strictMode = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
+
+                var o = {
+                        key: ["source", "protocol", "host", "userInfo", "user", "password", "hostname", "port", "relative", "pathname", "directory", "file", "search", "hash"],
+                        q: {
+                            name: "queryKey",
+                            parser: /(?:^|&)([^&=]*)=?([^&]*)/g
+                        },
+                        parser: {
+                            strict: /^(?:([^:\/?#]+):)?(?:\/\/((?:(([^:@]*)(?::([^:@]*))?)?@)?([^:\/?#]*)(?::(\d*))?))?((((?:[^?#\/]*\/)*)([^?#]*))(?:\?([^#]*))?(?:#(.*))?)/,
+                            loose: /^(?:(?![^:@]+:[^:@\/]*@)([^:\/?#.]+):)?(?:\/\/)?((?:(([^:@]*)(?::([^:@]*))?)?@)?([^:\/?#]*)(?::(\d*))?)(((\/(?:[^?#](?![^?#\/]*\.[^?#\/.]+(?:[?#]|$)))*\/?)?([^?#\/]*))(?:\?([^#]*))?(?:#(.*))?)/
+                        }
+                    },
+                    m = o.parser[strictMode ? "strict" : "loose"].exec(str),
+                    uri = {},
+                    i = 14;
+
+                while (i--) {
+                    uri[o.key[i]] = m[i] || "";
+                }uri[o.q.name] = {};
+                uri[o.key[12]].replace(o.q.parser, function ($0, $1, $2) {
+                    if ($1) uri[o.q.name][$1] = $2;
+                });
+
+                return uri;
+            }
+        }]);
+
+    return AcquiaHttpHmac;
 }();
 //END Acquia HMAC LIB https://github.com/acquia/http-hmac-javascript (modified)
 
@@ -304,7 +304,7 @@ var AcquiaHttpHmac = function () {
  * Utility function to switch out any Postman environment variables in the URL or body
  * of the request. Necessary because Postman has not substituted them yet.
  *
- * @param String   anString The string to parse and replace any {{envVars}} with values
+ * @param anString string  The string to parse and replace any {{envVars}} with values
  * @return string  The string with all {{envVars}} replaced
  */
 function switchOutEnvironmentVariables(anString)
@@ -354,10 +354,10 @@ else
 var sign_parameters = {request, method, path, signed_headers, content_type, body};
 
 var hmac_config = {
-        realm: hmacRealm,
-        public_key: publicKey,
-        secret_key: secretKey
-    };
+    realm: hmacRealm,
+    public_key: publicKey,
+    secret_key: secretKey
+};
 
 const HMAC = new AcquiaHttpHmac(hmac_config);
 HMAC.sign(sign_parameters);
